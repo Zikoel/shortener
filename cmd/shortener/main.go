@@ -1,104 +1,91 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/go-redis/redis"
 	"github.com/gofiber/fiber"
-	"github.com/teris-io/shortid"
+	"github.com/zikoel/shortener/pkg/persistence"
+	"github.com/zikoel/shortener/pkg/shortener"
 )
 
-func addNewURL(ctx *context.Context, client *redis.Client, generator *shortid.Shortid, url string) (string, error) {
-	code, err := generator.Generate()
-
-	if err != nil {
-		return "", err
-	}
-
-	err = client.Set(code, url, 0).Err()
-
-	if err != nil {
-		return "", err
-	}
-
-	err = client.Set(fmt.Sprintf("%s/count", code), 1, 0).Err()
-
-	if err != nil {
-		return "", err
-	}
-
-	return code, nil
+type shortenerParams struct {
+	URL string `json:"URL" form:"URL" query:"URL"`
+	Key string `json:"key" form:"key" query:"key"`
 }
 
 func main() {
 
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
+	db := persistence.CreateRedisAdapter()
+	short, err := shortener.CreateShortener(db, db, 1234)
 
-	app := fiber.New()
-
-	sid, err := shortid.New(1, shortid.DefaultABC, 2342)
 	if err != nil {
-		panic("Random generator init error")
+		panic("Impossibile initialize short")
 	}
 
-	app.Post("/api/:url", func(c *fiber.Ctx) {
-		ctx := context.Background()
-		url, err := addNewURL(&ctx, rdb, sid, c.Params("url"))
-
+	lookupHandler := func(c *fiber.Ctx) {
+		key := c.Params("key")
+		url, err := short.URLFromKey(key)
 		if err != nil {
-			fmt.Printf("err: %v\n", err)
-			c.SendStatus(500)
-			return
-		}
-
-		c.Send(fmt.Sprintf("Registered url %s", url))
-	})
-
-	app.Delete("/api/:shortURL", func(c *fiber.Ctx) {
-		r := rdb.Del(c.Params("shortURL"))
-
-		if r.Err() != nil {
-			c.SendStatus(500)
-			return
-		}
-
-		c.Send("Removed")
-	})
-
-	app.Get("/api/stats/:shortURL", func(c *fiber.Ctx) {
-		r := rdb.Get(fmt.Sprintf("%s/count", c.Params("shortURL")))
-
-		if r.Err() != nil {
-			c.Send("No data available")
-			return
-		}
-
-		count, err := r.Int64()
-
-		if err != nil {
-			c.Send("Error on counter")
-			return
-		}
-
-		c.Send(fmt.Sprintf("The URL was hitted %d times", count))
-	})
-
-	app.Get("/:shortURL", func(c *fiber.Ctx) {
-		r := rdb.Get(c.Params("shortURL"))
-		if r.Err() != nil {
 			c.SendStatus(404)
 			return
 		}
+		c.Redirect(url)
+		val, err := short.CountVisit(key)
 
-		rdb.Incr(fmt.Sprintf("%s/count", c.Params("shortURL")))
+		if err != nil {
+			fmt.Printf("Error increment counter for key %s: %v\n", key, err)
+			return
+		}
 
-		c.Redirect(r.Val())
-	})
+		fmt.Printf("key %s reach the value of %d\n", key, val)
+	}
+	registerHandler := func(c *fiber.Ctx) {
+		params := new(shortenerParams)
+
+		err = c.BodyParser(params)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			c.SendStatus(500)
+		}
+
+		key, err := short.KeyFromURL(params.URL, params.Key)
+
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			c.SendStatus(500)
+			return
+		}
+
+		c.Send(fmt.Sprintf("Registered url %s", key))
+	}
+	deleteHandler := func(c *fiber.Ctx) {
+		err := short.DeleteURLByKey(c.Params("key"))
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			c.SendStatus(500)
+		}
+	}
+	statsHandler := func(c *fiber.Ctx) {
+		key := c.Params("key")
+
+		count, err := short.CollectStats(key)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			c.SendStatus(500)
+			return
+		}
+
+		c.Send(fmt.Sprintf("Count: %d", count))
+	}
+
+	app := fiber.New()
+	api := app.Group("/api")
+
+	api.Post("/register", registerHandler)
+	api.Delete("/:key", deleteHandler)
+	api.Get("/stats/:key", statsHandler)
+
+	app.Get("/:key", lookupHandler)
 
 	app.Listen(3000)
 }
