@@ -8,7 +8,7 @@ import (
 	mock_shortener "github.com/zikoel/shortener/mocks"
 )
 
-func TestURLFromKey_URLNotValid(t *testing.T) {
+func TestKeyFromURL_URLNotValid(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
@@ -35,7 +35,7 @@ func TestURLFromKey_URLNotValid(t *testing.T) {
 	}
 }
 
-func TestURLFromKey_keyNotSuggestedNoCollision(t *testing.T) {
+func TestKeyFromURL_keyNotSuggestedNoCollision(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
@@ -67,18 +67,19 @@ func TestURLFromKey_keyNotSuggestedNoCollision(t *testing.T) {
 	}
 }
 
-func TestURLFromKey_keySuggestedCollision(t *testing.T) {
+func TestKeyFromURL_keySuggestedAlreadyExistWithSameURL(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
 	defer ctrl.Finish()
 
 	const url string = "http://www.google.com"
+	const keySuggested string = "foo"
 
 	f := mock_shortener.NewMockFinder(ctrl)
 	p := mock_shortener.NewMockPersister(ctrl)
 
-	f.EXPECT().Lookup( gomock.Eq("foo") ).Return(url, nil)
+	f.EXPECT().Lookup( gomock.Eq(keySuggested) ).Return(url, nil)
 	p.EXPECT().Persist(nil, nil).Times(0)
 
 	s, err := CreateShortener(f, p, 1234)
@@ -87,7 +88,7 @@ func TestURLFromKey_keySuggestedCollision(t *testing.T) {
 		t.Error("Error on CreateShortener")
 	}
 
-	key, err := s.KeyFromURL(url, "foo")
+	key, err := s.KeyFromURL(url, keySuggested)
 
 	if err != nil {
 		t.Error("Error on KeyFromURL")
@@ -98,7 +99,36 @@ func TestURLFromKey_keySuggestedCollision(t *testing.T) {
 	}
 }
 
-func TestURLFromKey_keySuggestedNoCollision(t *testing.T) {
+func TestKeyFromURL_keySuggestedAlreadyExistWithDifferentURL(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+
+	defer ctrl.Finish()
+
+	const url string = "http://www.google.com"
+	const alreadyExistingURL = "http://www.stackoverflow.com"
+	const keySuggested string = "foo"
+
+	f := mock_shortener.NewMockFinder(ctrl)
+	p := mock_shortener.NewMockPersister(ctrl)
+
+	f.EXPECT().Lookup( gomock.Eq(keySuggested) ).Return(alreadyExistingURL, nil).Times(1)
+	p.EXPECT().Persist(nil, nil).Times(0)
+
+	s, err := CreateShortener(f, p, 1234)
+
+	if err != nil {
+		t.Error("Error on CreateShortener")
+	}
+
+	_, err = s.KeyFromURL(url, keySuggested)
+
+	if err == nil {
+		t.Error("With collision on same key we need an error")
+	}
+}
+
+func TestKeyFromURL_keySuggestedNoCollision(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
@@ -131,7 +161,7 @@ func TestURLFromKey_keySuggestedNoCollision(t *testing.T) {
 	}
 }
 
-func TestURLFromKey_keyNoSuggestedCollision(t *testing.T) {
+func TestKeyFromURL_keyNoSuggestedCollision(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 

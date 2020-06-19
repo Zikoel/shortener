@@ -83,7 +83,7 @@ func generateHashFromURL(URL string) string {
 // KeyFromURL store the url with suggested key or store by a self generated key
 func (s *Shortener) KeyFromURL(URL, suggestedKey string) (string, error) {
 
-	if !strings.HasPrefix(URL,"http://") && !strings.HasPrefix(URL,"http://") {
+	if !strings.HasPrefix(URL,"https://") && !strings.HasPrefix(URL,"http://") {
 		return "", errors.New("URL must have the protocol part")
 	}
 
@@ -94,21 +94,33 @@ func (s *Shortener) KeyFromURL(URL, suggestedKey string) (string, error) {
 	}
 
 	alreadyExistURL, err := s.finder.Lookup(key)
+	thereIsCollision := err == nil && URL != alreadyExistURL
+	keyURLPairAlreadyExist := err == nil && URL == alreadyExistURL
 
-	if err == nil && URL == alreadyExistURL {
+	if thereIsCollision && suggestedKey != ""  {
+		return "", errors.New("suggested key already taken")
+	}
+
+	if keyURLPairAlreadyExist {
 		// we already have that key and the URL on value is the same... nothing to do
 		return key, nil
 	}
 
-	if err == nil && URL != alreadyExistURL {
+	if thereIsCollision {
 		// uh we detect an hash collision, very unlikely but no problem, generate a random key
-		key, err = s.sid.Generate()
 
-		if err != nil {
-			return "", err
+		foundFreeKey := false
+		for !foundFreeKey {
+			key, err = s.sid.Generate()
+			if err != nil {
+				return "", err
+			}
+			key = string(key[:8])
+			_, err := s.finder.Lookup(key)
+			if err != nil {
+				foundFreeKey = true
+			}
 		}
-
-		return s.KeyFromURL(URL, string(key[:8]))
 	}
 
 	err = s.persister.Persist(key, URL)
