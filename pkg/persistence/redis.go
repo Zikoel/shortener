@@ -72,7 +72,7 @@ func (r RedisAdapter) Persist(key string, value interface{}) error {
 // CreateRedisAdapter initalize new redis adapter
 func CreateRedisAdapter() *RedisAdapter {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "redis:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})

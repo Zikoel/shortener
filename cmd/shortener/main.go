@@ -14,7 +14,6 @@ type shortenerParams struct {
 }
 
 func main() {
-
 	db := persistence.CreateRedisAdapter()
 	short, err := shortener.CreateShortener(db, db, 1234)
 
@@ -87,5 +86,5 @@ func main() {
 
 	app.Get("/:key", lookupHandler)
 
-	app.Listen(3000)
+	app.Listen(5000)
 }

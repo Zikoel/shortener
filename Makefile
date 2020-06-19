@@ -14,6 +14,8 @@ build:
 test:
 				$(MOCKGEN) -source=./pkg/shortener/shortener.go -destination=./mocks/mock_shortener.go
 				$(GOTEST) -v ./pkg/shortener
+docker:
+				docker build -t zikoel/shortener .
 clean: 
 				$(GOCLEAN) ./cmd/shortener
 				rm -f ./bin/$(BINARY_NAME)

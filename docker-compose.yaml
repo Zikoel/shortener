@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  shortener:
+    image: zikoel/shortener:latest
+    ports:
+      - '5000:5000'
+    depends_on:
+      - redis
+  redis:
+    image: redis:latest
+    ports:
+      - '6379:6379'
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1450
