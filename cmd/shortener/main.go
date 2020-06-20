@@ -23,6 +23,37 @@ type config struct {
 	InMemoryPersistence bool   `env:"IN_MEMORY_PERSISTENCE" envDefault:"false"`
 }
 
+type stats struct {
+	TargetURL  string `json:"targetURL"`
+	VisitCount uint64 `json:"visitCount"`
+}
+
+const APIDocs = `
+endpoint: GET /:key
+description:
+	Redirect to the pointed key pointed URL or return 404 if URL associated with that key doesn't exist
+
+endpoint: POST /api/register
+JSON Params:
+	URL: The url to be register
+	key: The suggested key
+description:
+	Register the long URL with the suggested key, if the key parameter is not provided an 8 char length key is
+	automatically provided
+
+endpoint: DELETE /api/:key
+description:
+	Deleted the provided key
+
+endpoint: GET /api/stats/:key
+description:
+	Return a JSON that provide some key related stats
+
+endpoint: GET /api/usage
+description:
+	Return this documentation
+`
+
 func main() {
 	cfg := config{}
 	err := env.Parse(&cfg)
@@ -72,18 +103,27 @@ func main() {
 			return
 		}
 
-		c.Send(fmt.Sprintf("Registered url %s", key))
-
+		c.Send(key)
+		fmt.Printf("Registered new key %s with target URL %s\n", key, params.URL)
 	}
 	deleteHandler := func(c *fiber.Ctx) {
-		err := short.DeleteURLByKey(c.Params("key"))
+		key := c.Params("key")
+		err := short.DeleteURLByKey(key)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			c.SendStatus(500)
 		}
+		fmt.Printf("Removed key %s\n", key)
 	}
 	statsHandler := func(c *fiber.Ctx) {
 		key := c.Params("key")
+
+		url, err := short.URLFromKey(key)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			c.SendStatus(500)
+			return
+		}
 
 		count, err := short.CollectStats(key)
 		if err != nil {
@@ -92,7 +132,20 @@ func main() {
 			return
 		}
 
-		c.Send(fmt.Sprintf("Count: %d", count))
+		stats := stats{
+			TargetURL:  url,
+			VisitCount: count,
+		}
+
+		err = c.JSON(stats)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			c.SendStatus(500)
+			return
+		}
+	}
+	usageHandler := func(c *fiber.Ctx) {
+		c.Send(APIDocs)
 	}
 
 	app := fiber.New()
@@ -101,6 +154,7 @@ func main() {
 	api.Post("/register", registerHandler)
 	api.Delete("/:key", deleteHandler)
 	api.Get("/stats/:key", statsHandler)
+	api.Get("/usage", usageHandler)
 
 	app.Get("/:key", lookupHandler)
 
