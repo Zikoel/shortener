@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/caarlos0/env/v6"
+
 	"github.com/gofiber/fiber"
 	"github.com/zikoel/shortener/pkg/persistence"
 	"github.com/zikoel/shortener/pkg/shortener"
@@ -13,12 +15,27 @@ type shortenerParams struct {
 	Key string `json:"key" form:"key" query:"key"`
 }
 
+type config struct {
+	ServerPort          int    `env:"SERVER_PORT" envDefault:"5000"`
+	RedisHost           string `env:"REDIS_HOST" envDefault:"localhost"`
+	RedisPort           int    `env:"REDIS_PORT" envDefault:"6379"`
+	RedisPassword       string `env:"REDIS_PASSWORD" envDefault:""`
+	InMemoryPersistence bool   `env:"IN_MEMORY_PERSISTENCE" envDefault:"false"`
+}
+
 func main() {
-	db := persistence.CreateRedisAdapter()
+	cfg := config{}
+	err := env.Parse(&cfg)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		panic("Invalid arguments")
+	}
+
+	db := persistence.CreateRedisAdapter(cfg.RedisHost, cfg.RedisPort, cfg.RedisPassword)
 	short, err := shortener.CreateShortener(db, db, 1234)
 
 	if err != nil {
-		panic("Impossibile initialize short")
+		panic("Impossibile initialize shortener")
 	}
 
 	lookupHandler := func(c *fiber.Ctx) {
@@ -56,6 +73,7 @@ func main() {
 		}
 
 		c.Send(fmt.Sprintf("Registered url %s", key))
+
 	}
 	deleteHandler := func(c *fiber.Ctx) {
 		err := short.DeleteURLByKey(c.Params("key"))
@@ -86,5 +104,5 @@ func main() {
 
 	app.Get("/:key", lookupHandler)
 
-	app.Listen(5000)
+	app.Listen(cfg.ServerPort)
 }

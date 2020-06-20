@@ -3,6 +3,7 @@ package persistence
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/go-redis/redis"
 )
@@ -69,12 +70,15 @@ func (r RedisAdapter) Persist(key string, value interface{}) error {
 	return nil
 }
 
-// CreateRedisAdapter initalize new redis adapter
-func CreateRedisAdapter() *RedisAdapter {
+// CreateRedisAdapter initialize new redis adapter
+func CreateRedisAdapter(host string, port int, password string) *RedisAdapter {
+
+	addr := host + ":" + strconv.Itoa(port)
+	fmt.Printf("Search redis server on %s\n", addr)
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "redis:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
+		Addr:     addr,
+		Password: password,
+		DB:       0, // use default DB
 	})
 
 	return &RedisAdapter{
