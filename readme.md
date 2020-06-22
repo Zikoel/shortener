@@ -21,11 +21,11 @@ A very synthetic APIs usage can be found at the address `/api/usge` provided dir
 
 ## Application parameters
 
-SERVER_PORT: Where the server will listen for incoming requests (default: 5000)
-REDIS_HOST: The host were the redis server is listing (default: localhost)
-REDIS_PORT: The port were the redis server is listing (default: 6379)
-REDIS_PASSWORD: The password for the redis connection (default: "")
-IN_MEMORY_PERSISTENCE: The flag to switch from redis memory to in-memory persistence (actually non used) (default: false)  
+**SERVER_PORT:** Where the server will listen for incoming requests (default: 5000)  
+**REDIS_HOST:** The host were the redis server is listing (default: localhost)  
+**REDIS_PORT:** The port were the redis server is listing (default: 6379)  
+**REDIS_PASSWORD:** The password for the redis connection (default: "")  
+**IN_MEMORY_PERSISTENCE:** The flag to switch from redis memory to in-memory persistence (actually non used) (default: false)  
 
 ## Algorithm consideration
 
