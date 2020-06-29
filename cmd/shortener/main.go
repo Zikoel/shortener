@@ -121,7 +121,7 @@ func main() {
 		url, err := short.URLFromKey(key)
 		if err != nil {
 			fmt.Printf("%v\n", err)
-			c.SendStatus(500)
+			c.SendStatus(404)
 			return
 		}
 
@@ -151,9 +151,9 @@ func main() {
 	app := fiber.New()
 	api := app.Group("/api")
 
-	api.Post("/register", registerHandler)
-	api.Delete("/:key", deleteHandler)
-	api.Get("/stats/:key", statsHandler)
+	api.Post("/urls", registerHandler)
+	api.Delete("/urls/:key", deleteHandler)
+	api.Get("/urls/:key/stats", statsHandler)
 	api.Get("/usage", usageHandler)
 
 	app.Get("/:key", lookupHandler)
