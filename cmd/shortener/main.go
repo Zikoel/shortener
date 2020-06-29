@@ -92,7 +92,7 @@ func main() {
 		err = c.BodyParser(params)
 		if err != nil {
 			fmt.Printf("%v\n", err)
-			c.SendStatus(500)
+			c.SendStatus(400)
 		}
 
 		key, err := short.KeyFromURL(params.URL, params.Key)
