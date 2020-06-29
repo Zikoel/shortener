@@ -4,7 +4,7 @@ A very simple url shortener redis based
 
 ## Quick start
 
-1. run `make package`
+1. run `make docker`
 2. run `docker-compose up`
 
 ## How to compile
