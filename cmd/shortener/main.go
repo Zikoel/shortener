@@ -33,7 +33,7 @@ endpoint: GET /:key
 description:
 	Redirect to the pointed key pointed URL or return 404 if URL associated with that key doesn't exist
 
-endpoint: POST /api/register
+endpoint: POST /api/urls
 JSON Params:
 	URL: The url to be register
 	key: The suggested key
@@ -41,11 +41,11 @@ description:
 	Register the long URL with the suggested key, if the key parameter is not provided an 8 char length key is
 	automatically provided
 
-endpoint: DELETE /api/:key
+endpoint: DELETE /api/urls/:key
 description:
 	Deleted the provided key
 
-endpoint: GET /api/stats/:key
+endpoint: GET /api/urls/:key/stats
 description:
 	Return a JSON that provide some key related stats
 
