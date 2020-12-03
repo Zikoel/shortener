@@ -17,7 +17,7 @@ A very simple url shortener redis based
 
 ## API documentation
 
-A very synthetic APIs usage can be found at the address `/api/usge` provided directly by the app
+A very synthetic APIs usage can be found at the address `/api/usage` provided directly by the app
 
 ## Application parameters
 
