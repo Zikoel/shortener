@@ -5,7 +5,8 @@ import (
 
 	"github.com/caarlos0/env/v6"
 
-	"github.com/gofiber/fiber"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/zikoel/shortener/pkg/persistence"
 	"github.com/zikoel/shortener/pkg/shortener"
 )
@@ -28,6 +29,7 @@ type stats struct {
 	VisitCount uint64 `json:"visitCount"`
 }
 
+// APIDocs A simple string to describe the endpoints
 const APIDocs = `
 endpoint: GET /:key
 description:
@@ -69,24 +71,26 @@ func main() {
 		panic("Impossibile initialize shortener")
 	}
 
-	lookupHandler := func(c *fiber.Ctx) {
+	lookupHandler := func(c *fiber.Ctx) error {
 		key := c.Params("key")
 		url, err := short.URLFromKey(key)
 		if err != nil {
 			c.SendStatus(404)
-			return
+			return err
 		}
 		c.Redirect(url)
 		val, err := short.CountVisit(key)
 
 		if err != nil {
 			fmt.Printf("Error increment counter for key %s: %v\n", key, err)
-			return
+			return err
 		}
 
 		fmt.Printf("key %s reach the value of %d\n", key, val)
+		return nil
 	}
-	registerHandler := func(c *fiber.Ctx) {
+
+	registerHandler := func(c *fiber.Ctx) error {
 		params := new(shortenerParams)
 
 		err = c.BodyParser(params)
@@ -100,36 +104,42 @@ func main() {
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			c.SendStatus(500)
-			return
+			return err
 		}
 
-		c.Send(key)
+		c.SendString(key)
 		fmt.Printf("Registered new key %s with target URL %s\n", key, params.URL)
+
+		return nil
 	}
-	deleteHandler := func(c *fiber.Ctx) {
+
+	deleteHandler := func(c *fiber.Ctx) error {
 		key := c.Params("key")
 		err := short.DeleteURLByKey(key)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			c.SendStatus(500)
+			return err
 		}
 		fmt.Printf("Removed key %s\n", key)
+		return nil
 	}
-	statsHandler := func(c *fiber.Ctx) {
+
+	statsHandler := func(c *fiber.Ctx) error {
 		key := c.Params("key")
 
 		url, err := short.URLFromKey(key)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			c.SendStatus(404)
-			return
+			return err
 		}
 
 		count, err := short.CollectStats(key)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			c.SendStatus(500)
-			return
+			return err
 		}
 
 		stats := stats{
@@ -141,14 +151,21 @@ func main() {
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			c.SendStatus(500)
-			return
+			return err
 		}
+
+		return nil
 	}
-	usageHandler := func(c *fiber.Ctx) {
-		c.Send(APIDocs)
+
+	usageHandler := func(c *fiber.Ctx) error {
+		c.SendString(APIDocs)
+		return nil
 	}
 
 	app := fiber.New()
+
+	app.Use(cors.New())
+
 	api := app.Group("/api")
 
 	api.Post("/urls", registerHandler)
@@ -158,5 +175,5 @@ func main() {
 
 	app.Get("/:key", lookupHandler)
 
-	app.Listen(cfg.ServerPort)
+	app.Listen(fmt.Sprintf(":%d", cfg.ServerPort))
 }
